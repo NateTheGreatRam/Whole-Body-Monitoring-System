@@ -1,122 +1,146 @@
-import pandas as pd
-import random
-import matplotlib.pyplot as plt
 import streamlit as st
-from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
+import random
 
-# Step 1: Generate random data
-def generate_random_data(num_records=30):
-    today = datetime.today()
-    dates = [today - timedelta(days=i) for i in range(num_records)]
+st.set_page_config(page_title="Galaxy Watch 8 Dashboard", layout="wide")
 
-    data = {
-        'Date': dates,
-        'Steps': [random.randint(2000, 10000) for _ in range(num_records)],
-        'Calories': [random.randint(1500, 3500) for _ in range(num_records)],
-        'HeartRate': [random.randint(60, 180) for _ in range(num_records)],
-        'SpO2': [random.uniform(95.0, 100.0) for _ in range(num_records)],
-        'StressLevel': [random.uniform(20.0, 100.0) for _ in range(num_records)],
-        'ActivityMinutes': [random.randint(20, 120) for _ in range(num_records)],
-        'SleepTime': [random.randint(6, 9) for _ in range(num_records)],
-        'DeepSleep': [random.randint(2, 3) for _ in range(num_records)],
-        'LightSleep': [random.randint(2, 3) for _ in range(num_records)],
-        'REM': [random.randint(1, 2) for _ in range(num_records)],
-        'Systolic': [random.randint(100, 140) for _ in range(num_records)],
-        'Diastolic': [random.randint(60, 90) for _ in range(num_records)],
-        'ECG': [random.choice([0, 1]) for _ in range(num_records)],
-        'MenstrualCycle': [random.choice([None, 'Ovulation', 'Menstrual']) for _ in range(num_records)],
-    }
-    return pd.DataFrame(data)
+st.title("Galaxy Watch 8 Performance Dashboard")
 
-# Step 2: Data Processing Functions
-def process_data(df):
-    df['Date'] = pd.to_datetime(df['Date'])
-    df['SleepDuration'] = df['DeepSleep'] + df['LightSleep'] + df['REM']
-    df['SleepScore'] = (0.4 * df['SleepDuration']) + (0.3 * df['SleepTime']) + (0.3 * (df['DeepSleep'] / df['SleepDuration']))
-    df['ActivityScore'] = (df['ActivityMinutes'] / 60) * 10  # Simple scaling
-    return df
+# ---------------------------------------------------
+# Generate Random Data (If No CSV Uploaded)
+# ---------------------------------------------------
+def generate_random_data(days=7):
+    data = []
+    for i in range(days):
+        steps = random.randint(4000, 15000)
+        active_minutes = random.randint(20, 120)
+        heart_rate = random.randint(55, 170)
+        sleep_hours = round(random.uniform(5.5, 9), 2)
+        deep_sleep = round(random.uniform(1, 2.5), 2)
+        rem_sleep = round(random.uniform(1, 2.5), 2)
+        stress = random.randint(10, 90)
+        spo2 = random.uniform(92, 100)
+        systolic = random.randint(105, 140)
+        diastolic = random.randint(65, 90)
+        carotenoids = random.uniform(20000, 50000)
 
+        data.append([
+            steps, active_minutes, heart_rate,
+            sleep_hours, deep_sleep, rem_sleep,
+            stress, spo2, systolic, diastolic, carotenoids
+        ])
+
+    columns = [
+        "Steps", "Active Minutes", "Heart Rate",
+        "Sleep Hours", "Deep Sleep", "REM Sleep",
+        "Stress", "SpO2", "Systolic", "Diastolic", "Carotenoids"
+    ]
+
+    return pd.DataFrame(data, columns=columns)
+
+
+# ---------------------------------------------------
+# Energy Score (Recovery Based)
+# ---------------------------------------------------
 def calculate_energy_score(df):
-    df['EnergyScore'] = (0.35 * df['SleepScore']) + (0.30 * df['ActivityScore']) + (0.20 * df['HeartRate'].apply(lambda x: 100 - x)) + (0.15 * (df['StressLevel'] / 100))
-    return df
+    sleep_score = (df["Sleep Hours"].mean() / 8) * 40
+    stress_score = (1 - df["Stress"].mean() / 100) * 30
+    hr_score = (1 - (df["Heart Rate"].mean() - 60) / 100) * 30
 
-# Step 3: Display Functions for Athlete, Trainer, Doctor, and Coach
-def athlete_display(df):
-    fig, ax = plt.subplots(3, 1, figsize=(10, 12))
+    score = sleep_score + stress_score + hr_score
+    return max(0, min(100, round(score, 1)))
 
-    ax[0].plot(df['Date'], df['Steps'], color='b', label="Steps")
-    ax[0].set_title("Daily Steps")
-    ax[0].set_xlabel("Date")
-    ax[0].set_ylabel("Steps")
 
-    ax[1].plot(df['Date'], df['Calories'], color='g', label="Calories")
-    ax[1].set_title("Calories Burned")
-    ax[1].set_xlabel("Date")
-    ax[1].set_ylabel("Calories")
+# ---------------------------------------------------
+# Antioxidant Index (Carotenoid Based)
+# ---------------------------------------------------
+def calculate_antioxidant_index(df):
+    avg_carotenoids = df["Carotenoids"].mean()
+    index = (avg_carotenoids / 50000) * 100
+    return max(0, min(100, round(index, 1)))
 
-    ax[2].plot(df['Date'], df['EnergyScore'], color='r', label="Energy Score")
-    ax[2].set_title("Energy Score")
-    ax[2].set_xlabel("Date")
-    ax[2].set_ylabel("Score")
 
-    plt.tight_layout()
-    st.pyplot(fig)
+# ---------------------------------------------------
+# Upload CSV
+# ---------------------------------------------------
+uploaded_file = st.file_uploader("Upload Galaxy Watch CSV", type=["csv"])
 
-def trainer_display(df):
-    fig, ax = plt.subplots(figsize=(10, 5))
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+else:
+    st.info("No file uploaded — using simulated Galaxy Watch data.")
+    df = generate_random_data()
 
-    ax.plot(df['Date'], df['HeartRate'], color='purple', label="Heart Rate")
-    ax.set_title("Heart Rate Trend")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Heart Rate (BPM)")
+energy_score = calculate_energy_score(df)
+antioxidant_index = calculate_antioxidant_index(df)
 
-    plt.tight_layout()
-    st.pyplot(fig)
+view = st.selectbox("Select Display Role", ["Athlete", "Trainer", "Doctor", "Coach"])
 
-def doctor_display(df):
-    fig, ax = plt.subplots(figsize=(10, 5))
+st.divider()
 
-    ax.plot(df['Date'], df['SpO2'], color='blue', label="SpO2")
-    ax.set_title("Blood Oxygen (SpO2)")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("SpO2 (%)")
+# ===================================================
+# ATHLETE VIEW
+# ===================================================
+if view == "Athlete":
+    st.header("Athlete Dashboard")
 
-    plt.tight_layout()
-    st.pyplot(fig)
+    st.metric("Average Steps", int(df["Steps"].mean()))
+    st.metric("Active Minutes (avg)", int(df["Active Minutes"].mean()))
+    st.metric("Energy Score", energy_score)
+    st.metric("Sleep (avg hrs)", round(df["Sleep Hours"].mean(), 2))
 
-def coach_display(df):
-    fig, ax = plt.subplots(figsize=(10, 5))
+    if energy_score < 50:
+        st.warning("Low recovery detected. Consider rest.")
+    else:
+        st.success("Recovery status good.")
 
-    ax.plot(df['Date'], df['EnergyScore'], color='orange', label="Energy Score")
-    ax.set_title("Energy Score Trend")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Energy Score")
 
-    plt.tight_layout()
-    st.pyplot(fig)
+# ===================================================
+# TRAINER VIEW
+# ===================================================
+elif view == "Trainer":
+    st.header("Trainer Dashboard")
 
-# Step 4: Streamlit App Layout
-def main():
-    st.title("Galaxy Watch 8 Health Data Dashboard")
+    st.write("Weekly Performance Overview")
 
-    # Select user role
-    user_type = st.selectbox("Select User Type", ['Athlete', 'Trainer', 'Doctor', 'Coach'])
+    st.write("Avg Heart Rate:", int(df["Heart Rate"].mean()))
+    st.write("Avg Stress Level:", int(df["Stress"].mean()))
+    st.write("Total Active Minutes:", int(df["Active Minutes"].sum()))
 
-    # Simulate random data and process it
-    df = generate_random_data(num_records=30)
-    df = process_data(df)
-    df = calculate_energy_score(df)
+    if df["Stress"].mean() > 70:
+        st.error("Overtraining risk detected.")
 
-    # Display based on user type
-    if user_type == 'Athlete':
-        athlete_display(df)
-    elif user_type == 'Trainer':
-        trainer_display(df)
-    elif user_type == 'Doctor':
-        doctor_display(df)
-    elif user_type == 'Coach':
-        coach_display(df)
 
-# Run the app
-if __name__ == "__main__":
-    main()
+# ===================================================
+# DOCTOR VIEW
+# ===================================================
+elif view == "Doctor":
+    st.header("Doctor Dashboard")
+
+    st.write("Average SpO2:", round(df["SpO2"].mean(), 2))
+    st.write("Blood Pressure Avg:",
+             f"{int(df['Systolic'].mean())}/{int(df['Diastolic'].mean())}")
+
+    st.write("Sleep Apnea Risk Check:")
+    if df["SpO2"].mean() < 94:
+        st.warning("Possible oxygen desaturation detected.")
+    else:
+        st.success("Oxygen levels normal.")
+
+    st.write("Antioxidant Index:", antioxidant_index)
+
+
+# ===================================================
+# COACH VIEW
+# ===================================================
+elif view == "Coach":
+    st.header("Coach Dashboard")
+
+    st.write("Consistency Score:", round(df["Steps"].std(), 1))
+    st.write("Energy Score:", energy_score)
+
+    if df["Steps"].std() > 3000:
+        st.warning("Inconsistent training load.")
+    else:
+        st.success("Training consistency good.")
