@@ -66,16 +66,18 @@ def generate_data(days=14):
     return pd.DataFrame(data, columns=columns)
 
 # -------------------------------------------------
-# CLEAN & NORMALIZE COLUMNS
+# CLEAN & NORMALIZE COLUMNS (FIXED VERSION)
 # -------------------------------------------------
 def clean_columns(df):
+
+    # Strong normalization
     df.columns = (
         df.columns
         .str.strip()
         .str.lower()
         .str.replace("%","")
-        .str.replace("(min)","", regex=False)
-        .str.replace("(bpm)","", regex=False)
+        .str.replace("(","")
+        .str.replace(")","")
     )
 
     mapping = {
@@ -84,6 +86,7 @@ def clean_columns(df):
         "active minutes": "Active",
         "active": "Active",
         "heart rate": "HR",
+        "heart rate bpm": "HR",
         "hr": "HR",
         "stress": "Stress",
         "spo2": "SpO2",
@@ -91,14 +94,17 @@ def clean_columns(df):
         "systolic": "Sys",
         "diastolic": "Dia",
         "deep sleep": "Deep",
+        "deep sleep min": "Deep",
         "rem sleep": "REM",
+        "rem sleep min": "REM",
         "light sleep": "Light",
+        "light sleep min": "Light",
         "sleep apnea events": "Apnea",
         "body fat": "Fat",
         "fat": "Fat",
         "muscle mass": "Muscle",
-        "carotenoids": "Carot",
         "antioxidant index": "Carot",
+        "carotenoids": "Carot",
         "ecg abnormal": "ECG",
         "ecg": "ECG",
         "fall detected": "Fall",
@@ -201,54 +207,6 @@ if role == "Athlete":
     card("SpO₂", round(get_col("SpO2").mean(),1))
     card("Stress", int(get_col("Stress").mean()))
     card("Energy Score", energy)
-    card("Body Fat %", round(get_col("Fat").mean(),1))
-    card("Muscle Mass", round(get_col("Muscle").mean(),1))
-    card("Cycle Phase", get_col("Cycle").iloc[-1] if "Cycle" in df.columns else "N/A")
-    card("Fall Events", int(get_col("Fall").sum()))
-
-# =================================================
-# TRAINER
-# =================================================
-elif role == "Trainer":
-    st.header("🏋️ Trainer View")
-    card("Steps", int(get_col("Steps").mean()))
-    card("Calories", int(get_col("Calories").mean()))
-    card("Active Minutes", int(get_col("Active").mean()))
-    card("Training Load (HR)", int(get_col("HR").mean()))
-    card("Stress", int(get_col("Stress").mean()))
-    card("Blood Pressure",
-         f"{int(get_col('Sys').mean())}/{int(get_col('Dia').mean())}")
-    card("SpO₂", round(get_col("SpO2").mean(),1))
-    card("Energy Score", energy)
-
-# =================================================
-# COACH
-# =================================================
-elif role == "Coach":
-    st.header("🎯 Coach View")
-    card("Active Minutes", int(get_col("Active").mean()))
-    card("Training Load", int(get_col("HR").mean()))
-    card("Stress", int(get_col("Stress").mean()))
-    card("Energy Score", energy)
-    card("Deep Sleep", round(get_col("Deep").mean(),2))
-    card("REM Sleep", round(get_col("REM").mean(),2))
-    card("Light Sleep", round(get_col("Light").mean(),2))
-    card("Body Fat %", round(get_col("Fat").mean(),1))
-    card("Muscle Mass", round(get_col("Muscle").mean(),1))
-    card("Fall Events", int(get_col("Fall").sum()))
-
-# =================================================
-# DOCTOR
-# =================================================
-elif role == "Doctor":
-    st.header("🩺 Doctor View")
-    card("Heart Rate", int(get_col("HR").mean()))
-    card("Blood Pressure",
-         f"{int(get_col('Sys').mean())}/{int(get_col('Dia').mean())}")
-    card("SpO₂", round(get_col("SpO2").mean(),1))
-    card("Stress", int(get_col("Stress").mean()))
-    card("Energy Score (Trend)", energy)
-    card("Antioxidant Index", antiox)
     card("Body Fat %", round(get_col("Fat").mean(),1))
     card("Muscle Mass", round(get_col("Muscle").mean(),1))
     card("Cycle Phase", get_col("Cycle").iloc[-1] if "Cycle" in df.columns else "N/A")
