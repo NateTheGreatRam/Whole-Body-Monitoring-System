@@ -1,6 +1,9 @@
-# ================================
+import pandas as pd
+import os
+
+# ======================================
 # LOCKED HEALTH METRICS SYSTEM
-# ================================
+# ======================================
 
 def clean_columns(df):
 
@@ -63,15 +66,44 @@ def clean_columns(df):
 
     # Convert numeric columns safely
     for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors="ignore")
+        df[col] = pd.to_numeric(df[col], errors="coerce")
 
     return df
 
 
-# ================================
-# USE AFTER CSV LOAD
-# ================================
+# ======================================
+# LOAD MULTIPLE CSV FILES
+# ======================================
 
-# Example:
-# df = pd.read_csv(uploaded_file)
-# df = clean_columns(df)
+def load_multiple_csv(folder_path):
+
+    all_data = []
+
+    for file in os.listdir(folder_path):
+        if file.endswith(".csv"):
+            file_path = os.path.join(folder_path, file)
+            df = pd.read_csv(file_path)
+            df = clean_columns(df)
+            all_data.append(df)
+
+    if all_data:
+        combined_df = pd.concat(all_data, ignore_index=True)
+        return combined_df
+    else:
+        print("No CSV files found.")
+        return None
+
+
+# ======================================
+# RUN SYSTEM
+# ======================================
+
+folder_path = "your_csv_folder_here"  # <-- CHANGE THIS
+
+data = load_multiple_csv(folder_path)
+
+if data is not None:
+    print("Data Loaded Successfully\n")
+    print(data.head())
+    print("\nColumns Included:")
+    print(list(data.columns))
