@@ -60,17 +60,20 @@ def generate_data(days=14):
             random.choice([0,0,0,1]),
             random.choice(["Follicular","Ovulation","Luteal","Menstrual"])
         ])
-    columns = ["Steps","Calories","Active","HR","Stress","SpO2",
-               "Sys","Dia","Deep","REM","Light","Apnea",
-               "Fat","Muscle","Carot","ECG","Fall","Cycle"]
+
+    columns = [
+        "Steps","Calories","Active","HR","Stress","SpO2",
+        "Sys","Dia","Deep","REM","Light","Apnea",
+        "Fat","Muscle","Carot","ECG","Fall","Cycle"
+    ]
+
     return pd.DataFrame(data, columns=columns)
 
 # -------------------------------------------------
-# CLEAN & NORMALIZE COLUMNS (FIXED VERSION)
+# CLEAN & LOCK TO APPROVED HEALTH METRICS
 # -------------------------------------------------
 def clean_columns(df):
 
-    # Strong normalization
     df.columns = (
         df.columns
         .str.strip()
@@ -94,26 +97,30 @@ def clean_columns(df):
         "systolic": "Sys",
         "diastolic": "Dia",
         "deep sleep": "Deep",
-        "deep sleep min": "Deep",
         "rem sleep": "REM",
-        "rem sleep min": "REM",
         "light sleep": "Light",
-        "light sleep min": "Light",
         "sleep apnea events": "Apnea",
         "body fat": "Fat",
-        "fat": "Fat",
         "muscle mass": "Muscle",
         "antioxidant index": "Carot",
-        "carotenoids": "Carot",
         "ecg abnormal": "ECG",
         "ecg": "ECG",
         "fall detected": "Fall",
-        "cycle phase": "Cycle"
+        "cycle phase": "Cycle",
+        "menstrual cycle": "Cycle"
     }
 
     df = df.rename(columns=mapping)
 
-    # Convert numeric columns safely
+    approved_columns = [
+        "Steps","Calories","Active","HR","ECG","SpO2",
+        "Cycle","Stress","Fat","Muscle",
+        "Deep","REM","Light","Apnea",
+        "Sys","Dia","Carot","Fall"
+    ]
+
+    df = df[[col for col in df.columns if col in approved_columns]]
+
     for col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="ignore")
 
@@ -130,7 +137,6 @@ uploaded_files = st.sidebar.file_uploader(
 
 if uploaded_files:
     dataframes = []
-
     for file in uploaded_files:
         temp_df = pd.read_csv(file)
         temp_df = clean_columns(temp_df)
@@ -138,6 +144,7 @@ if uploaded_files:
 
     df = pd.concat(dataframes, ignore_index=True)
     df = df.drop_duplicates()
+    df = df.fillna(0)
 
     st.sidebar.success(f"{len(uploaded_files)} file(s) loaded successfully.")
 
@@ -146,6 +153,19 @@ else:
         st.session_state.galaxy_data = generate_data()
     df = st.session_state.galaxy_data
     st.sidebar.info("Using simulated demo data.")
+
+# -------------------------------------------------
+# ENSURE REQUIRED COLUMNS EXIST
+# -------------------------------------------------
+required_columns = [
+    "Steps","Calories","Active","HR","Stress","SpO2",
+    "Sys","Dia","Deep","REM","Light","Apnea",
+    "Fat","Muscle","Carot","ECG","Fall","Cycle"
+]
+
+for col in required_columns:
+    if col not in df.columns:
+        df[col] = 0
 
 # -------------------------------------------------
 # SAFE COLUMN ACCESS
@@ -209,5 +229,42 @@ if role == "Athlete":
     card("Energy Score", energy)
     card("Body Fat %", round(get_col("Fat").mean(),1))
     card("Muscle Mass", round(get_col("Muscle").mean(),1))
-    card("Cycle Phase", get_col("Cycle").iloc[-1] if "Cycle" in df.columns else "N/A")
+    card("Cycle Phase", get_col("Cycle").iloc[-1])
     card("Fall Events", int(get_col("Fall").sum()))
+
+# =================================================
+# TRAINER
+# =================================================
+elif role == "Trainer":
+    st.header("🏋️ Trainer View")
+    card("Average Heart Rate", int(get_col("HR").mean()))
+    card("Active Minutes", int(get_col("Active").mean()))
+    card("Deep Sleep Avg", round(get_col("Deep").mean(),1))
+    card("REM Sleep Avg", round(get_col("REM").mean(),1))
+    card("Stress Level", int(get_col("Stress").mean()))
+    card("Sleep Apnea Events", int(get_col("Apnea").mean()))
+
+# =================================================
+# COACH
+# =================================================
+elif role == "Coach":
+    st.header("📊 Coach Performance Overview")
+    card("Steps Avg", int(get_col("Steps").mean()))
+    card("Calories Avg", int(get_col("Calories").mean()))
+    card("Energy Score", energy)
+    card("Recovery Score", 
+         round(get_col("REM").mean() + get_col("Deep").mean(),1))
+    card("Fall Events", int(get_col("Fall").sum()))
+
+# =================================================
+# DOCTOR
+# =================================================
+elif role == "Doctor":
+    st.header("🩺 Clinical Overview")
+    card("Resting HR (Avg)", int(get_col("HR").mean()))
+    card("Blood Pressure (Avg)",
+         f"{int(get_col('Sys').mean())}/{int(get_col('Dia').mean())}")
+    card("SpO₂ Avg", round(get_col("SpO2").mean(),1))
+    card("Stress Avg", int(get_col("Stress").mean()))
+    card("ECG Flags", int(get_col("ECG").sum()))
+    card("Sleep Apnea Events", int(get_col("Apnea").sum()))
